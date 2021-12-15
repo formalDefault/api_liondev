@@ -5,7 +5,7 @@ const cors = require('cors');
 const app = express(); 
 const bodyParser = require('body-parser');
 var cron = require('node-cron')
-var sd = require('silly-datetime'); //libreria fecha y hora en formato
+var sd = require('silly-datetime'); //libreria para formatear fecha y hora 
 
 app.use(cors());
 app.use(express.json());
@@ -54,12 +54,12 @@ app.post("/api/insert", (req, result) => {
     const horaFin = req.body.horaFin;   
     var disponibilidadSala = true;
 
-    const agendarReserva = "INSERT INTO reservaciones (fecha, horaInicio, horaFin, titular, sala) VALUES (?, ?, ?, ?, ?)";
+    const agendarReserva = "INSERT INTO reservaciones (fecha, horaInicio, horaFin, titular, sala, estado) VALUES (?, ?, ?, ?, ?, ?)";
     
-    //se obtienen los horarios de la fecha para comprobar disponibilidad
-    bd.query("SELECT horaInicio, horaFin FROM reservaciones WHERE fecha = ?", [fecha], (err, data) => {
+    //se obtienen los horarios de la fecha para comprobar disponibilidad y de la sala
+    bd.query("SELECT horaInicio, horaFin FROM reservaciones WHERE fecha = ? AND sala = ?", [fecha, sala], (err, data) => {
         if (!err ) {  
-            //comprueba la disponibilidad de la sala en base a horario
+            //comprueba la disponibilidad de la sala en base a horario 
             data.forEach(element => { 
                 if(horaInicio >= element.horaInicio && horaFin <= element.horaFin) disponibilidadSala = false;
                 else if(horaInicio <= element.horaFin && horaInicio >= element.horaInicio) disponibilidadSala = false;
@@ -80,9 +80,9 @@ app.post("/api/insert", (req, result) => {
                     console.log("mas de dos horas")
                 } else { 
                     // query para registrar reserva en la bd
-                   bd.query(agendarReserva, [fecha, horaInicio, horaFin, titular, sala], (err, res) => {
+                   bd.query(agendarReserva, [fecha, horaInicio, horaFin, titular, sala, 'pendiente'], (err, res) => {
                         if(!err) {
-                            //llamar a algo()
+                            //llamar a ordenarHorarios()
                             result.send("se reservo la sala");
                         } else {
                             console.log(err); 
@@ -94,29 +94,32 @@ app.post("/api/insert", (req, result) => {
     }) 
 });  
 
-app.delete("/api/delete/:id", (req, result) => {
-    //id de la reservacion a eliminar
+//cancelar reservacion manualmente
+app.put("/api/cancelar/:id", (req, result) => {
+    //id de la reservacion a cancelar
     const ID = req.params.id;
 
-    const queryDelete = "DELETE FROM reservaciones WHERE reservaciones.id = ?"
+    const queryDelete = "UPDATE reservaciones SET estado = 'cancelada' WHERE reservaciones.id = ?"
 
     bd.query(queryDelete, [ID], (err, res) => {
-        if(!err) result.json(`Reserva ${ID} borrada`)
+        if(!err) result.json(`Reserva ${ID} cancelada`)
     })
 }) 
+ 
 
 //formato de fecha actual
 var fechaActual =sd.format(new Date(), 'YYYY-MM-DD'); 
-var horaActual = sd.format(new Date(), 'HH:mm');
+var diaActual = sd.format(new Date(), 'DD');
 
-var agendaReservacionesI = []; 
+var horaInicioSunset = []; 
+var horaFinSunset = []; 
 var agendaReservacionesF = []; 
   
-function Burbuja() {
-    var lista = agendaReservacionesI;
+//metodo de ordenacion burbuja, ordena el array de menor a mayor
+function metodoBurbuja(horarios) {
+    var lista = horarios;
     var n, i, k, aux;
-    n = lista.length; 
-    // Algoritmo de ordenacion burbuja
+    n = lista.length;  
     for (k = 1; k < n; k++) {
         for (i = 0; i < (n - k); i++) {
             if (lista[i] > lista[i + 1]) {
@@ -128,35 +131,49 @@ function Burbuja() {
     }  
 }
 
-function algo() { 
-    bd.query("SELECT * FROM reservaciones WHERE fecha = ?", [fechaActual], (err, data) => { 
+//ordenar horarios pendientes
+function ordenarHorarios() { 
+    bd.query("SELECT * FROM reservaciones WHERE fecha = ? AND estado = ? AND sala = ?", 
+    [fechaActual, 'pendiente', 'sunset'], (err, data) => { 
         data.forEach(i => {
-            if(!agendaReservacionesI.includes(i.horaInicio)) agendaReservacionesI.push(i.horaInicio);   
+            if(!horaInicioSunset.includes(i.horaInicio)) horaInicioSunset.push(i.horaInicio);   
+            if(!horaFinSunset.includes(i.horaFin)) horaFinSunset.push(i.horaFin);   
         })
-        Burbuja();
+        metodoBurbuja(horaInicioSunset);
     })  
-}
+} 
 
 //obtiene horarios para actualizar las salas, funciona cada 30 min. 
 cron.schedule('* * * * *', () => {
-    console.log("No. 1",sd.format(new Date(), 'HH:mm')); 
-    var i = 1;
-    algo(); 
-    var minutos = parseInt(agendaReservacionesI[i].substr(3,5));
-    var hora = parseInt(agendaReservacionesI[i].substr(1,2));
-    console.log(agendaReservacionesI, hora, minutos); 
+  var NHoraios = horaInicioSunset.length;
+  console.log("No. 1", sd.format(new Date(), "HH:mm"));
+  var i = 0;
+  ordenarHorarios();
+  var minutos = parseInt(horaInicioSunset[i].substr(3, 5));
+  var hora = parseInt(horaInicioSunset[i].substr(0, 2));
+  console.log(horaInicioSunset[i], hora, minutos);
+ 
+  //marcar la sala sunset como ocupada
+  cron.schedule(`${minutos} ${hora} ${diaActual} * *`, () => {
+    bd.query(
+      "UPDATE reservaciones SET estado = ? WHERE horaInicio = ?",
+      ["En uso", horaInicioSunset[i]],
+      (err) => {
+        if (!err) { 
+          if (i >= NHoraios) {
+            console.log("ultimo horario actualizado con exito");
+            i = NHoraios - 1;
+          } else i++;
+          console.log("actualizado con exito");
+        } 
+      }
+    );
+  });
+ 
+  //marcar la sala como desocupada
+  // cron.schedule(`${minutos} ${hora} * * *`, () => {
 
-    //marcar la sala como ocupada
-    cron.schedule(`${minutos} ${hora} * * *`, () => { 
-        bd.query("UPDATE reservaciones SET estado = ? WHERE horaInicio = ?", ['En uso', agendaReservacionesI[i]], (err) => {
-            if(!err) console.log("actualizado con exito")
-        }) 
-    })
-
-    //marcar la sala como desocupada
-    // cron.schedule(`${minutos} ${hora} * * *`, () => {
-
-    // })
+  // })
 }); 
      
-console.log(horaActual)
+console.log(sd.format(new Date(), 'HH:mm'))
