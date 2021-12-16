@@ -112,8 +112,7 @@ var fechaActual =sd.format(new Date(), 'YYYY-MM-DD');
 var diaActual = sd.format(new Date(), 'DD');
 
 var horaInicioSunset = []; 
-var horaFinSunset = []; 
-var agendaReservacionesF = []; 
+var horaFinSunset = [];  
   
 //metodo de ordenacion burbuja, ordena el array de menor a mayor
 function metodoBurbuja(horarios) {
@@ -136,10 +135,24 @@ function ordenarHorarios() {
     bd.query("SELECT * FROM reservaciones WHERE fecha = ? AND estado = ? AND sala = ?", 
     [fechaActual, 'pendiente', 'sunset'], (err, data) => { 
         data.forEach(i => {
-            if(!horaInicioSunset.includes(i.horaInicio)) horaInicioSunset.push(i.horaInicio);   
-            if(!horaFinSunset.includes(i.horaFin)) horaFinSunset.push(i.horaFin);   
+            if(!horaInicioSunset.includes(i.horaInicio)) horaInicioSunset.push(i.horaInicio); 
         })
+        //ordenar horarios de menor a mayor
+        metodoBurbuja(horaInicioSunset); 
+    })  
+} 
+
+//ordenar horarios en uso
+function ordenarHorarios() { 
+    bd.query("SELECT * FROM reservaciones WHERE fecha = ? AND estado = ? OR estado = ? AND sala = ?", 
+    [fechaActual, 'pendiente', 'En uso', 'sunset'], (err, data) => { 
+        data.forEach(i => {
+            if(!horaInicioSunset.includes(i.horaInicio)) horaInicioSunset.push(i.horaInicio);
+            if(!horaFinSunset.includes(i.horaFin)) horaFinSunset.push(i.horaFin);    
+        })
+        //ordenar horarios de menor a mayor
         metodoBurbuja(horaInicioSunset);
+        metodoBurbuja(horaFinSunset);
     })  
 } 
 
@@ -149,31 +162,45 @@ cron.schedule('* * * * *', () => {
   console.log("No. 1", sd.format(new Date(), "HH:mm"));
   var i = 0;
   ordenarHorarios();
-  var minutos = parseInt(horaInicioSunset[i].substr(3, 5));
-  var hora = parseInt(horaInicioSunset[i].substr(0, 2));
-  console.log(horaInicioSunset[i], hora, minutos);
+  //hora inicial de reservacion
+  var minutosInicio = parseInt(horaInicioSunset[i].substr(3, 5));
+  var horaInicio = parseInt(horaInicioSunset[i].substr(0, 2));
+
+  //hora final de reservacion
+  var minutosFinal = parseInt(horaFinSunset[i].substr(3, 5));
+  var horaFinal = parseInt(horaFinSunset[i].substr(0, 2));
+
+  console.log(horaInicioSunset, horaFinSunset, horaInicioSunset[i], horaFinSunset[i]);
  
-  //marcar la sala sunset como ocupada
-  cron.schedule(`${minutos} ${hora} ${diaActual} * *`, () => {
+  //marcar la resrvacion en uso
+  cron.schedule(`${minutosInicio} ${horaInicio} ${diaActual} * *`, () => {
     bd.query(
       "UPDATE reservaciones SET estado = ? WHERE horaInicio = ?",
       ["En uso", horaInicioSunset[i]],
       (err) => {
         if (!err) { 
-          if (i >= NHoraios) {
-            console.log("ultimo horario actualizado con exito");
-            i = NHoraios - 1;
-          } else i++;
-          console.log("actualizado con exito");
+            console.log("actualizado con exito");
+        }
+      }
+    );
+  });
+
+  //marcar la reservacion como finalizada
+  cron.schedule(`${minutosFinal} ${horaFinal} ${diaActual} * *`, () => {
+    bd.query(
+      "UPDATE reservaciones SET estado = ? WHERE horaInicio = ?",
+      ["finalizada", horaInicioSunset[i]],
+      (err) => {
+        if (!err) { 
+          //retira las reservaciones finalizadas de la cola de horarios
+          horaFinSunset.shift();
+          horaInicioSunset.shift(); 
+          console.log("actualizado con exito", horaFinSunset, horaInicioSunset);
         } 
       }
     );
   });
- 
-  //marcar la sala como desocupada
-  // cron.schedule(`${minutos} ${hora} * * *`, () => {
-
-  // })
+  
 }); 
      
 console.log(sd.format(new Date(), 'HH:mm'))
