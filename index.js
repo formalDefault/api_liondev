@@ -193,7 +193,7 @@ const ordenarHorarios = async (sala) => {
 } 
 
 //obtiene horarios para actualizar las reservaciones de la sala sunset, funciona cada 10 min. 
-cron.schedule('* * * * * *', () => { 
+cron.schedule('* * * * *', () => { 
   console.log("No. 1", sd.format(new Date(), "HH:mm"));
   var i = 0; 
   ordenarHorarios( 'sunset' );
@@ -251,7 +251,7 @@ cron.schedule('* * * * * *', () => {
 }); 
 
 //obtiene horarios para actualizar las reservaciones de la sala future, funciona cada 10 min. 
-cron.schedule('* * * * * *', () => { 
+cron.schedule('* * * * *', () => { 
   console.log("No. 2", sd.format(new Date(), "HH:mm"));
   var i = 0; 
   ordenarHorarios( 'future' );
@@ -298,6 +298,65 @@ cron.schedule('* * * * * *', () => {
             horaFinFuture.shift();
             horaInicioFuture.shift(); 
             console.log( "actualizado con exito", horaFinFuture, horaInicioFuture );
+          }
+        );
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    await dbCall();
+  });
+  
+}); 
+
+//obtiene horarios para actualizar las reservaciones de la sala nature, funciona cada 10 min. 
+cron.schedule('* * * * *', () => { 
+  console.log("No. 3", sd.format(new Date(), "HH:mm"));
+  var i = 0; 
+  ordenarHorarios( 'nature' );
+
+  //hora inicial de reservacion
+  var minutosInicio = parseInt(horaInicioNature[i].substr(3, 5));
+  var horaInicio = parseInt(horaInicioNature[i].substr(0, 2));
+
+  //hora final de reservacion
+  var minutosFinal = parseInt(horaFinNature[i].substr(3, 5));
+  var horaFinal = parseInt(horaFinNature[i].substr(0, 2));
+
+  console.log('nature', horaInicioNature, horaFinNature, horaInicioNature[i], horaFinNature[i]);
+ 
+  //marcar la resrvacion en uso
+  cron.schedule(`${minutosInicio} ${horaInicio} ${diaActual} * *`, async () => {
+    const dbCall = () => {
+      try {
+        bd.query(
+          "UPDATE reservaciones SET estado = ? WHERE horaInicio = ?",
+          ["En uso", horaInicioNature[i]],
+          (err, data) => {
+            if (err) throw err; 
+            console.log("actualizado con exito"); 
+          }
+        );
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    await dbCall();
+  });
+
+  //marcar la reservacion como finalizada
+  cron.schedule(`${minutosFinal} ${horaFinal} ${diaActual} * *`, async () => {
+    const dbCall = () => { 
+      try {
+        bd.query(
+          "UPDATE reservaciones SET estado = ? WHERE horaInicio = ?",
+          ["finalizada", horaInicioNature[i]],
+          (err, data) => {
+            if (err) throw err;
+            //retira las reservaciones finalizadas de la cola de horarios
+            horaFinNature.shift();
+            horaInicioNature.shift(); 
+            console.log( "actualizado con exito", horaFinNature, horaInicioNature );
           }
         );
       } catch (error) {
