@@ -56,7 +56,7 @@ app.get("/api/get", async (req, result) => {
         }
     }
     await dbCall(); 
-});
+}); 
 
 //agregar reservacion de sala
 app.post("/api/insert", async (req, result) => {
@@ -177,6 +177,9 @@ const ordenarHorarios = async (sala) => {
               } else if(sala === 'future') {
                 if(!horaInicioFuture.includes(i.horaInicio)) horaInicioFuture.push(i.horaInicio);
                 if(!horaFinFuture.includes(i.horaFin)) horaFinFuture.push(i.horaFin);
+              } else if(sala === 'nature') {
+                if(!horaInicioNature.includes(i.horaInicio)) horaInicioNature.push(i.horaInicio);
+                if(!horaFinNature.includes(i.horaFin)) horaFinNature.push(i.horaFin);
               } 
             })
             //ordenar horarios de menor a mayor
@@ -186,6 +189,9 @@ const ordenarHorarios = async (sala) => {
             } else if(sala === 'future') {
               ordenacionBurbuja(horaInicioFuture);
               ordenacionBurbuja(horaFinFuture);
+            }  else if(sala === 'nature') {
+              ordenacionBurbuja(horaInicioNature);
+              ordenacionBurbuja(horaFinNature);
             }  
         })  
     }
