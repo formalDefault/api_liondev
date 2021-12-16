@@ -34,10 +34,10 @@ app.listen(app.get('port'), () => {
 
 //Conexion a la base de datos mysql
 const bd = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'salasdejunta',
+    host: 'bjct1tiq2chiydxss0k4-mysql.services.clever-cloud.com',
+    user: 'ur6kb5tmw8gakyyl',
+    password: 'pFdTd5SgxPceaHSQ92MQ',
+    database: 'bjct1tiq2chiydxss0k4',
     port: 3306
 }); 
 module.exports = bd;
