@@ -133,11 +133,11 @@ app.post("/api/insert", async (req, result) => {
 });  
 
 //cancelar reservacion manualmente
-app.put("/api/cancelar/:id", async (req, result) => {  
+app.delete("/api/cancelar/:id", async (req, result) => {  
     const dbCall = () => {
         try {
             const ID = req.params.id;
-            const queryDelete = "UPDATE reservaciones SET estado = 'cancelada' WHERE reservaciones.id = ?";
+            const queryDelete = "DELETE FROM reservaciones WHERE reservaciones.id = ?";
             bd.query(queryDelete, [ID], (err, res) => {
                 if (err)throw err;
                 result.json(`Reserva ${ID} cancelada`);
