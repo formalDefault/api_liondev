@@ -199,7 +199,7 @@ const ordenarHorarios = async (sala) => {
 } 
 
 //obtiene horarios para actualizar las reservaciones de la sala sunset, funciona cada 10 min. 
-cron.schedule('* * * * *', () => { 
+cron.schedule('*/10 * * * *', () => { 
   console.log("No. 1", sd.format(new Date(), "HH:mm"));
   var i = 0; 
   ordenarHorarios( 'sunset' );
@@ -257,7 +257,7 @@ cron.schedule('* * * * *', () => {
 }); 
 
 //obtiene horarios para actualizar las reservaciones de la sala future, funciona cada 10 min. 
-cron.schedule('* * * * *', () => { 
+cron.schedule('*/10 * * * *', () => { 
   console.log("No. 2", sd.format(new Date(), "HH:mm"));
   var i = 0; 
   ordenarHorarios( 'future' );
@@ -316,7 +316,7 @@ cron.schedule('* * * * *', () => {
 }); 
 
 //obtiene horarios para actualizar las reservaciones de la sala nature, funciona cada 10 min. 
-cron.schedule('* * * * *', () => { 
+cron.schedule('*/10 * * * *', () => { 
   console.log("No. 3", sd.format(new Date(), "HH:mm"));
   var i = 0; 
   ordenarHorarios( 'nature' );
