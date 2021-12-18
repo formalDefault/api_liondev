@@ -106,7 +106,7 @@ app.post("/api/insert", async (req, result) => {
                   result.json("No se pueden reservar mas de dos horas");
                 } else {
                   //verificar que la fecha no sea anterior a la actual
-                  if ( horaInicio < sd.format(new Date(), "HH:mm") || fecha < fechaActual ) {
+                  if ( horaInicio < sd.format(new Date(), "HH:mm") && fecha < fechaActual ) {
                     result.json("Elija un horario valido");
                   } else {
                     // query para registrar reserva en la bd
