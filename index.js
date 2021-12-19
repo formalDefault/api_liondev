@@ -32,6 +32,8 @@ var horaFinFuture = [];
 var horaInicioNature = []; 
 var horaFinNature = [];  
 
+//***FALTA AGREGAR POOL DE CONEXIONES*****
+
 //configuraciones de puerto para express
 app.set('port', process.env.PORT || 4000); 
 app.listen(app.get('port'), () => {
